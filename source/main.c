@@ -4,67 +4,59 @@
 
 #include "common.h"
 #include "draw.h"
-#include "fs.h"
 #include "hid.h"
-#include "i2c.h"
-#include "decryptor/padgen.h"
-#include "decryptor/titlekey.h"
+#include "fs.h"
+#include "textmenu.h"
+#include "interface.h"
+#include "arm9loader.h"
 
-void ClearTop()
-{
-    ClearScreen(TOP_SCREEN, RGB(255, 255, 255));
-    current_y = 0;
-}
+//extern u32 entry_point_arm9;
+extern u32 is_arm9_decrypted;
 
-void Reboot()
-{
-    i2cWriteRegister(I2C_DEV_MCU, 0x20, 1 << 2);
-    while(true);
-}
+int main () {
+	InitFS();
 
-int main()
-{
-    ClearTop();
-    InitFS();
+	u32 pad_state;
+	int menuidx = 0;
 
-    Debug("A: NCCH Padgen");
-    Debug("B: SD Padgen");
-    Debug("X: Titlekey Decryption");
-    Debug("Y: NAND Padgen");
-    Debug("");
-    Debug("START: Reboot");
+	if (is_arm9_decrypted) {
+		clear_top();
+		newline(1);
+		Debug("N3DS ARM9 binary successfully decrypted!");
+		newline(2);
+		Debug("Hold 'Y' during startup if you do not");
+		Debug("want the ARM9 binary to be decrypted");
+		wait_any_key();
+	}
+	//loader_info_t li;
+
+	//result = init_loader_info(&li);
+	//li.address = entry_point_arm9;
+
     while (true) {
-        u32 pad_state = InputWait();
-        if (pad_state & BUTTON_A) {
-            ClearTop();
-            Debug("NCCH Padgen: %s!", NcchPadgen() == 0 ? "succeeded" : "failed");
-            break;
-        } else if (pad_state & BUTTON_B) {
-            ClearTop();
-            Debug("SD Padgen: %s!", SdPadgen() == 0 ? "succeeded" : "failed");
-            break;
-        } else if (pad_state & BUTTON_X) {
-            ClearTop();
-            Debug("Titlekey Decryption: %s!", DecryptTitlekeys() == 0 ? "succeeded" : "failed");
-            break;
-        } else if (pad_state & BUTTON_Y) {
-            ClearTop();
-            Debug("NAND Padgen: %s!", NandPadgen() == 0 ? "succeeded" : "failed");
-            break;
-        } else if (pad_state & BUTTON_START) {
-            goto reboot;
+		clear_top();
+
+		menuidx = print_main_menu(menuidx, &main_menu);		
+        pad_state = InputWait();
+        
+		if (pad_state & BUTTON_START) {
+        	break;        	
+        }
+        else if (pad_state & BUTTON_A) {
+			//menu_execute_function(menuidx, &main_menu, &li);
+			menu_execute_function(menuidx, &main_menu, 0);
+			wait_any_key();
+        }
+        else if (pad_state & BUTTON_UP) {
+        	menuidx--;
+        }
+        else if (pad_state & BUTTON_DOWN) {
+        	menuidx++;
         }
     }
+    
+	DeinitFS();
 
-    Debug("");
-    Debug("Press START to reboot to home.");
-    while(true) {
-        if (InputWait() & BUTTON_START)
-            break;
-    }
-
-reboot:
-    Reboot();
-    DeinitFS();
+	// return control to firmware
     return 0;
 }

@@ -6,7 +6,7 @@ ifeq ($(strip $(DEVKITARM)),)
 $(error "Please set DEVKITARM in your environment. export DEVKITARM=<path to>devkitARM")
 endif
 
-include $(DEVKITARM)/ds_rules
+include $(DEVKITARM)/3ds_rules
 
 #---------------------------------------------------------------------------------
 # TARGET is the name of the output
@@ -18,7 +18,7 @@ include $(DEVKITARM)/ds_rules
 #---------------------------------------------------------------------------------
 export TARGET		:=	$(shell basename $(CURDIR))
 BUILD		:=	build
-SOURCES		:=	source source/fatfs source/decryptor
+SOURCES		:=	source source/fatfs
 DATA		:=	data
 INCLUDES	:=	include source source/fatfs
 
@@ -101,13 +101,12 @@ all: $(BUILD)
 $(BUILD):
 	@[ -d $@ ] || mkdir -p $@
 	@make --no-print-directory -C $(BUILD) -f $(CURDIR)/Makefile
-	cp tools/LauncherTemplate.dat Launcher.dat
-	python tools/insert.py Launcher.dat $(OUTPUT).bin 0x16D8D0
+	cp $(OUTPUT).bin arm9payload.bin
  
 #---------------------------------------------------------------------------------
 clean:
 	@echo clean ...
-	@rm -fr $(BUILD) $(OUTPUT).elf $(OUTPUT).bin Launcher.dat
+	@rm -fr $(BUILD) $(OUTPUT).elf $(OUTPUT).bin
  
  
 #---------------------------------------------------------------------------------

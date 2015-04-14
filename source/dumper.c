@@ -1,0 +1,30 @@
+#include "common.h"
+#include "dumper.h"
+#include "fs.h"
+#include "firm.h"
+
+// TODO: add callback argument for progress bar
+// TODO: implement progress bar :)
+u32 dump_mem (const char *filename, void *addr, u32 size) {
+	u32 written = 0;
+	u32 total = 0;
+	u32 result = 0;
+	u32 num = 0;
+	const u32 sz_chunk = 0x10000;
+	
+	if (FileCreate(filename, true)) {
+		while (total < size) {
+			num = size - total < sz_chunk ? size - total : sz_chunk;
+			written = FileWrite((u8 *)addr + total,
+				num,
+				total);
+			if (written != num) {
+				break;
+			}
+			total += written;
+		}
+		FileClose();
+		result = (size == total);
+	}	
+	return result;	
+}

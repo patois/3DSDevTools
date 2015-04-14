@@ -17,4 +17,7 @@
 #define BUTTON_X      (1 << 10)
 #define BUTTON_Y      (1 << 11)
 
-u32 InputWait();
+u32 InputWait (void);
+u32 wait_key (char *msg);
+void wait_any_key (void);
+u32 wait_confirm_cancel (char *msg);

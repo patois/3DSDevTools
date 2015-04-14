@@ -178,10 +178,10 @@ u32 NandPadgen()
     switch (GetUnitPlatform()) {
         case PLATFORM_3DS:
             keyslot = 0x4;
-            nand_size = 758;
+            nand_size = 756;
         case PLATFORM_N3DS:
             keyslot = 0x5;
-            nand_size = 1055;
+            nand_size = 1054;
     }
 
     Debug("Creating NAND FAT16 xorpad. Size (MB): %u", nand_size);
