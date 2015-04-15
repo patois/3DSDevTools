@@ -1,3 +1,11 @@
 3DS DEVELOPMENT TOOLS
 
-To be used with brahma (https://github.com/patois/Brahma/releases)
+This tool runs in privileged mode on the ARM9 processor of the Nintendo (N)3DS.
+
+Currently, it offers the ability to dump several memory regions to SD card
+for analysis.
+
+Use with Brahma (https://github.com/patois/Brahma/releases)
+During startup, hold 'Y' button on N3DS consoles to decrypt ARM9 binary
+(on O3DS consoles, the ARM9 binary does not have an additional encryption
+layer).

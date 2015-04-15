@@ -1,7 +1,8 @@
 .section ".init"
 
 .global _start
-.global is_arm9_decrypted
+.global arm9_decrypted
+.global key_trigger
 .global entry_point_arm9
 
 .extern main
@@ -16,7 +17,8 @@ _start:
 	@ required, don't move :)	
 	entry_point_arm9:  .long 0
 	
-	is_arm9_decrypted: .long 0
+	arm9_decrypted:    .long 0
+	key_trigger:       .long 0
 	HID_PAD:           .long 0x10146000
 
 _init:
@@ -24,15 +26,20 @@ _init:
 
 	bl fix_firm_hdr
 
+	@ attempt decryption only if
+	@ 'Y' is pressed during startup
+	ldr r0, HID_PAD
+	ldr r0, [r0]
+	ands r0, #0x800 @ BUTTON_Y
+	bne j_main
+
+	mov r0, #1
+	str r0, key_trigger
+
 	bl is_n3ds
 	cmp r0, #0
 	beq j_main
 	
-	ldr r0, HID_PAD
-	ldr r0, [r0]
-	ands r0, #0x800 @ BUTTON_Y
-	beq j_main
-
 	bl is_kernel_supported
 	cmp r0, #1
 	beq unpack_arm9_ldr
@@ -55,7 +62,7 @@ cont:
 	stmfd sp!, {r0-r12, lr}
 	bl restore_n3ds_ldr
 	mov r1, #1
-	str r1, is_arm9_decrypted
+	str r1, arm9_decrypted
 	ldmfd sp!, {r0-r12, lr}
 
 _main:

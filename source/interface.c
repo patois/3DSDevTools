@@ -22,15 +22,37 @@ struct menu_t main_menu = {
 };
 
 void newline (int count) {
-    int i;
-    for(i=0; i<count; i++)
-        Debug("");
+	int i;
+	for(i=0; i<count; i++)
+		Debug("");
 }
 
 void clear_top (void) {
     ClearScreen(TOP_SCREEN0, RGB(255, 255, 255));
     ClearScreen(TOP_SCREEN1, RGB(255, 255, 255));
     current_y = 0;
+}
+
+int print_progress(int oldstep, u32 val, u32 maxval) {
+	char buf[256];
+	char *p = (char *)&buf;
+	int i;
+	int curstep;
+	const int maxstep = 10;
+
+	curstep = (val * maxstep) / maxval;
+
+	if (curstep > oldstep) {
+		strcpy(p++, "[");
+		for (i = 0; i < maxstep; i++) {
+			snprintf(p++, sizeof(buf) - 1 - i, "%c", i < curstep ? '#' : ' ');
+		}
+		strncat(p, "]", sizeof(buf) - strlen(buf) - 1);
+		clear_top();
+		newline(1);
+		Debug("Dumping %s %3d%%", buf, (val * 100 + maxval/2) / maxval);
+	}
+	return curstep > oldstep ? curstep : oldstep;
 }
 
 int ask_dump (char *what) {
@@ -40,7 +62,7 @@ int ask_dump (char *what) {
     newline(2);
     Debug("Dump %s?", what);
     newline(1);
-	Debug("---------------------------");
+    Debug("---------------------------");
     newline(1);
     Debug("START : Confirm");
     Debug("B     : Abort");
@@ -49,7 +71,6 @@ int ask_dump (char *what) {
         if (key & BUTTON_START) {
             clear_top();
             newline(1);
-            Debug("Do NOT turn off your console!");
             break;
         } else if (key & BUTTON_B) {
             clear_top();
@@ -65,9 +86,10 @@ int menu_cb_dump_bootrom (int idx, void *notused) {
 	u32 result = 0;
 
 	if (ask_dump("ARM9 RAM")) {
-			result = dump_mem(PATH_BOOTROM, (void *)ARM9_BOOTROM, ARM9_BOOTROM_SIZE);
+			result = dump_mem(PATH_BOOTROM, (void *)ARM9_BOOTROM, ARM9_BOOTROM_SIZE, &print_progress);
 			newline(2);
 			Debug("Done: %s!", result ? "success":"failure");
+			result = 1;
 	}
 	return result;
 }
@@ -76,9 +98,10 @@ int menu_cb_dump_arm9internal (int idx, void *notused) {
 	u32 result = 0;
 
 	if (ask_dump("ARM9 RAM")) {
-			result = dump_mem(PATH_ARM9INTERNAL, (void *)ARM9_INTERNAL, ARM9_INTERNAL_SIZE);
+			result = dump_mem(PATH_ARM9INTERNAL, (void *)ARM9_INTERNAL, ARM9_INTERNAL_SIZE, &print_progress);
 			newline(2);
 			Debug("Done: %s!", result ? "success":"failure");
+			result = 1;	
 	}
 	return result;
 }
@@ -87,9 +110,10 @@ int menu_cb_dump_fcram (int idx, void *notused) {
 	u32 result = 0;
 
 	if (ask_dump("FCRAM")) {
-			result = dump_mem(PATH_FCRAM, (void *)ARM9_FCRAM, ARM9_FCRAM_SIZE);
+			result = dump_mem(PATH_FCRAM, (void *)ARM9_FCRAM, ARM9_FCRAM_SIZE, &print_progress);
 			newline(2);
 			Debug("Done: %s!", result ? "success":"failure");
+			result = 1;
 	}
 	return result;
 }
@@ -98,9 +122,10 @@ int menu_cb_dump_axiwram (int idx, void *notused) {
 	u32 result = 0;
 
 	if (ask_dump("AXI WRAM")) {
-			result = dump_mem(PATH_AXIWRAM, (void *)ARM9_AXIWRAM, ARM9_AXIWRAM_SIZE);
+			result = dump_mem(PATH_AXIWRAM, (void *)ARM9_AXIWRAM, ARM9_AXIWRAM_SIZE, &print_progress);
 			newline(2);
 			Debug("Done: %s!", result ? "success":"failure");
+			result = 1;
 	}
 	return result;
 }
@@ -115,10 +140,11 @@ int menu_cb_dump_firm (int idx, void *notused) {
 	   into account sections that are not 'properly' aligned */
 	if (is_valid_firm()) {
 		if (ask_dump("FIRM")) {
+			newline(1);
 			Debug("FIRM header:");
 			Debug("%08X-%08X (%08X)", firm, (u32)firm + sizeof(firm_header_t), sizeof(firm_header_t));
 			newline(1);
-			dump_mem(PATH_FIRM_HEADER, (void *)firm, sizeof(firm_header_t));
+			dump_mem(PATH_FIRM_HEADER, (void *)firm, sizeof(firm_header_t), 0);
 			for (int i=0; i<FIRM_MAX_SECTION_COUNT; i++) {
 
 				snprintf((char *)&filename, sizeof(filename) - 1, PATH_FMT_FIRM_SECTION, i);
@@ -128,7 +154,7 @@ int menu_cb_dump_firm (int idx, void *notused) {
 				Debug("Section %d/%d:", i + 1, FIRM_MAX_SECTION_COUNT);
 				if (addr && size) {
 					Debug("%08X-%08X (%08X)", addr, addr + size, size); 
-					if (!dump_mem((char *)&filename, addr, size)) {
+					if (!dump_mem((char *)&filename, addr, size, 0)) {
 						Debug("[!] ERROR");
 					}
 				} else {
@@ -136,7 +162,7 @@ int menu_cb_dump_firm (int idx, void *notused) {
 				}
 				newline(1);
 			}
-			//Debug("Done:!");
+			result = 1;
 		}
 	} else {
 		Debug("Invalid FIRM header. Please turn off console.");
@@ -150,8 +176,8 @@ int menu_cb_decrypt_loader (int idx, void *param) {
 	u32 result = 0;
 	loader_info_t *li = param;
 
-    clear_top();
-    newline(2);
+	clear_top();
+	newline(2);
 
 	if (GetUnitPlatform() == PLATFORM_N3DS) {
 		if (li) {
@@ -208,7 +234,7 @@ int print_main_menu (int idx, struct menu_t *menu) {
 	int newidx = 0;
 
 	newline(1);
-	Debug("3DS DEVELOPMENT TOOLS");
+	Debug("%s", BRAHMA_TOOL_NAME);
 	newline(2);
 	Debug("===========================");
 	newidx = print_menu(idx, menu);

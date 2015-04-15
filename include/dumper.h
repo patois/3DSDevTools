@@ -19,4 +19,6 @@
 #define ARM9_BOOTROM          0xFFFF0000
 #define ARM9_BOOTROM_SIZE     0x00010000
 
-u32 dump_mem (const char *filename, void *addr, u32 size);
+typedef int progress_printer_t(int oldstep, u32 val, u32 maval);
+
+u32 dump_mem (const char *filename, void *addr, u32 size, progress_printer_t *f);
