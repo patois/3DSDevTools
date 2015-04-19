@@ -3,8 +3,6 @@
 #include "fs.h"
 #include "firm.h"
 
-// TODO: add callback argument for progress bar
-// TODO: implement progress bar :)
 u32 dump_mem (const char *filename, void *addr, u32 size, progress_printer_t *f) {
 	u32 written = 0;
 	u32 total = 0;

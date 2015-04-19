@@ -1,9 +1,11 @@
 .section ".init"
 
 .global _start
-.global arm9_decrypted
-.global key_trigger
-.global entry_point_arm9
+.global ARM9_is_decrypted
+.global ARM9_is_key_trigger
+.global ARM9_EP
+.global ARM9_OEP_bkp
+.global ARM9_OEP_chk_bkp
 
 .extern main
 
@@ -15,11 +17,36 @@ _start:
     b _init
 
 	@ required, don't move :)	
-	entry_point_arm9:  .long 0
+	ARM9_EP:              .long 0xFFFF0000
 	
-	arm9_decrypted:    .long 0
-	key_trigger:       .long 0
-	HID_PAD:           .long 0x10146000
+	ARM9_is_decrypted:    .long 0
+	ARM9_is_key_trigger:  .long 0
+	
+	@ backup of ARM9 binary Original Entry Point
+	ARM9_OEP_bkp:         .long 0
+	@ backup of code which is going to be patched
+	ARM9_OEP_chk_bkp:     .long 0
+
+	HID_PAD:              .long 0x10146000
+	PDN_MPCORE_CFG:       .long 0x10140FFC
+	ARM_NOP:              .long 0xE1A00000
+	MAPPED_FIRM:          .long 0x24000000	
+	
+	@ Firmware specific data (structure)
+	@ +0 checksum (see tools/calcchk.py)
+	@ +4 pointer to ARM9 loader variable which
+	@    contains ARM9 binary's OEP
+	@ +8 pointer to ARM9 loader code which
+	@    verifies whether OEP falls within
+	@    a particular range
+	
+	firm_specific_data:
+	.long 0x3FE0D972 @ N3DS 9.0.0.20E
+	.long 0x08091580 @ p_oep
+	.long 0x0808C428 @ p_oep_chk
+	
+	.long 0 @ terminate array of struct
+
 
 _init:
 	stmfd sp!, {r0-r12, lr}
@@ -27,14 +54,14 @@ _init:
 	bl fix_firm_hdr
 
 	@ attempt decryption only if
-	@ 'Y' is pressed during startup
+	@ 'Y' is held during startup
 	ldr r0, HID_PAD
 	ldr r0, [r0]
 	ands r0, #0x800 @ BUTTON_Y
 	bne j_main
 
 	mov r0, #1
-	str r0, key_trigger
+	str r0, ARM9_is_key_trigger
 
 	bl is_n3ds
 	cmp r0, #0
@@ -55,14 +82,14 @@ unpack_arm9_ldr:
 	ldmfd sp!, {r0-r12, lr}
 
 	@ execute N3DS ARM9 loader (decrypts ARM9 binary in memory)
-	ldr pc, entry_point_arm9
+	ldr pc, ARM9_EP
 	@ ARM9 loader continues execution here
 cont:
 
 	stmfd sp!, {r0-r12, lr}
 	bl restore_n3ds_ldr
 	mov r1, #1
-	str r1, arm9_decrypted
+	str r1, ARM9_is_decrypted
 	ldmfd sp!, {r0-r12, lr}
 
 _main:
@@ -72,11 +99,10 @@ _main:
 	ldmfd sp!, {r0-r12, lr}
 	
 	@ return control to ARM9	
-	ldr r2, oep_bkp
-	cmp r2, #0
-	ldreq r2, entry_point_arm9
+	ldr r2, ARM9_OEP_bkp @ jmp to ARM9 OEP (address of decrypted ARM9 code)
+	cmp r2, #0x0
+	ldreq r2, ARM9_EP
 	bx r2
-
 
 is_n3ds:
 	ldr r0, PDN_MPCORE_CFG
@@ -85,13 +111,11 @@ is_n3ds:
 	moveq r0, #1
 	movne r0, #0
 	bx lr
-	
-	PDN_MPCORE_CFG: .long 0x10140FFC
 
 fix_firm_hdr:
 	@ fix FIRM header (restore ARM9 EP)
 	ldr r0, MAPPED_FIRM
-	ldr r1, entry_point_arm9
+	ldr r1, ARM9_EP
 	str r1, [r0, #0xC]
 	bx lr	
 	
@@ -108,22 +132,20 @@ patch_n3ds_ldr:
 	@ patch N3DS ARM9 loader OEP
 	ldr r0, [r10,#4] @ p_oep
 	ldr r1, [r0]
-	str r1, oep_bkp
+	str r1, ARM9_OEP_bkp
 	adr r2, cont
 	str r2, [r0]
 	
 	@ patch N3DS ARM9 loader OEP check
 	ldr r0, [r10,#8] @ p_oep_chk
 	ldr r1, [r0]
-	str r1, oep_chk_bkp
+	str r1, ARM9_OEP_chk_bkp
 	ldr r2, ARM_NOP
 	str r2, [r0]
 
 _lp:	
 	ldmfd sp!, {r10, lr}
 	bx lr
-	
-	ARM_NOP: .long 0xE1A00000
 	
 restore_n3ds_ldr:
 	stmfd sp!, {lr}
@@ -139,12 +161,12 @@ restore_n3ds_ldr:
 
 	@ fix N3DS ARM9 loader (restore OEP)
 	ldr r0, [r2,#4] @ p_oep
-	ldr r1, oep_bkp
+	ldr r1, ARM9_OEP_bkp
 	str r1, [r0]
 	
 	@ fix N3DS ARM9 loader (restore OEP check)
 	ldr r0, [r2,#8] @ p_oep_chk
-	ldr r1, oep_chk_bkp
+	ldr r1, ARM9_OEP_chk_bkp
 	str r1, [r0]
 
 _lr:	
@@ -175,7 +197,6 @@ next_word:
 	ldmfd sp!,{r3}
 	bx lr
 
-
 get_kernel_info_idx:
 	stmfd sp!,{r3,lr}
 	
@@ -185,7 +206,7 @@ get_kernel_info_idx:
 
 	mov r3, #0	
 next:
-	ldr r2, [r0] @ RSA sig struct
+	ldr r2, [r0] @ get checksum from struct
 	cmp r2, #0
 	moveq r3, #-1
 	beq leave
@@ -202,16 +223,3 @@ leave:
 	
 	ldmfd sp!,{r3,lr}
 	bx lr
-
-	MAPPED_FIRM:    .long 0x24000000
-	oep_bkp:        .long 0
-	oep_chk_bkp:    .long 0
-	
-	
-	@ Firmware specific data
-	firm_specific_data:
-	.long 0x3FE0D972 @ N3DS 9.0.0.20E
-	.long 0x08091580 @ p_oep
-	.long 0x0808C428 @ p_oep_chk
-	
-	.long 0 @ terminate array of struct

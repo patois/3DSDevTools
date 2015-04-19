@@ -33,9 +33,9 @@ void clear_top (void) {
     current_y = 0;
 }
 
-int print_progress(int oldstep, u32 val, u32 maxval) {
-	char buf[256];
-	char *p = (char *)&buf;
+int dump_cb_print_progress(int oldstep, u32 val, u32 maxval) {
+	char progress_bar[0x80];
+	char *p = (char *)&progress_bar;
 	int i;
 	int curstep;
 	const int maxstep = 10;
@@ -45,14 +45,14 @@ int print_progress(int oldstep, u32 val, u32 maxval) {
 	if (curstep > oldstep) {
 		strcpy(p++, "[");
 		for (i = 0; i < maxstep; i++) {
-			snprintf(p++, sizeof(buf) - 1 - i, "%c", i < curstep ? '#' : ' ');
+			snprintf(p++, sizeof(progress_bar) - i - 1, "%c", i < curstep ? '#' : ' ');
 		}
-		strncat(p, "]", sizeof(buf) - strlen(buf) - 1);
+		strncat(p, "]", sizeof(progress_bar) - strlen(progress_bar) - 1);
 		clear_top();
 		newline(1);
-		Debug("Dumping %s %3d%%", buf, (val * 100 + maxval/2) / maxval);
+		Debug("Dumping %s %3d%%", progress_bar, (val * 100 + maxval/2) / maxval);
 	}
-	return curstep > oldstep ? curstep : oldstep;
+	return maxi(curstep, oldstep);
 }
 
 int ask_dump (char *what) {
@@ -85,8 +85,8 @@ int ask_dump (char *what) {
 int menu_cb_dump_bootrom (int idx, void *notused) {
 	u32 result = 0;
 
-	if (ask_dump("ARM9 RAM")) {
-			result = dump_mem(PATH_BOOTROM, (void *)ARM9_BOOTROM, ARM9_BOOTROM_SIZE, &print_progress);
+	if (ask_dump("ARM9 Bootrom")) {
+			result = dump_mem(PATH_BOOTROM, (void *)ARM9_BOOTROM, ARM9_BOOTROM_SIZE, &dump_cb_print_progress);
 			newline(2);
 			Debug("Done: %s!", result ? "success":"failure");
 			result = 1;
@@ -98,7 +98,7 @@ int menu_cb_dump_arm9internal (int idx, void *notused) {
 	u32 result = 0;
 
 	if (ask_dump("ARM9 RAM")) {
-			result = dump_mem(PATH_ARM9INTERNAL, (void *)ARM9_INTERNAL, ARM9_INTERNAL_SIZE, &print_progress);
+			result = dump_mem(PATH_ARM9INTERNAL, (void *)ARM9_INTERNAL, ARM9_INTERNAL_SIZE, &dump_cb_print_progress);
 			newline(2);
 			Debug("Done: %s!", result ? "success":"failure");
 			result = 1;	
@@ -110,7 +110,7 @@ int menu_cb_dump_fcram (int idx, void *notused) {
 	u32 result = 0;
 
 	if (ask_dump("FCRAM")) {
-			result = dump_mem(PATH_FCRAM, (void *)ARM9_FCRAM, ARM9_FCRAM_SIZE, &print_progress);
+			result = dump_mem(PATH_FCRAM, (void *)ARM9_FCRAM, ARM9_FCRAM_SIZE, &dump_cb_print_progress);
 			newline(2);
 			Debug("Done: %s!", result ? "success":"failure");
 			result = 1;
@@ -122,7 +122,7 @@ int menu_cb_dump_axiwram (int idx, void *notused) {
 	u32 result = 0;
 
 	if (ask_dump("AXI WRAM")) {
-			result = dump_mem(PATH_AXIWRAM, (void *)ARM9_AXIWRAM, ARM9_AXIWRAM_SIZE, &print_progress);
+			result = dump_mem(PATH_AXIWRAM, (void *)ARM9_AXIWRAM, ARM9_AXIWRAM_SIZE, &dump_cb_print_progress);
 			newline(2);
 			Debug("Done: %s!", result ? "success":"failure");
 			result = 1;

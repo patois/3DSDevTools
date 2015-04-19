@@ -25,3 +25,4 @@ int init_loader_info (loader_info_t *li);
 int patch_loader (loader_info_t *li);
 int run_loader (loader_info_t *li);
 int restore_loader (loader_info_t *li);
+u32 get_checksum (void *address, u32 size);

@@ -7,5 +7,3 @@ for analysis.
 
 Use with Brahma (https://github.com/patois/Brahma/releases)
 During startup, hold 'Y' button on N3DS consoles to decrypt ARM9 binary
-(on O3DS consoles, the ARM9 binary does not have an additional encryption
-layer).

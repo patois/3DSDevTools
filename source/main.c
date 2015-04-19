@@ -9,32 +9,35 @@
 #include "textmenu.h"
 #include "interface.h"
 #include "platform.h"
-//#include "arm9loader.h"
-
-//extern u32 entry_point_arm9;
+#include "arm9loader.h"
+#include "firm.h"
+#include "global.h"
 
 void check_trigger (void) {
-	extern u32 arm9_decrypted;
-	extern u32 key_trigger;
 	u8 is_n3ds = (GetUnitPlatform() == PLATFORM_N3DS);
 
-	if (key_trigger) {
+	if (ARM9_is_key_trigger) {
 		clear_top();
 		newline(1);
 		Debug("%s", BRAHMA_TOOL_NAME);
 		newline(4);
 
 		if (is_n3ds) {
-			if (arm9_decrypted) {
+			if (ARM9_is_decrypted) {
 				Debug("N3DS ARM9 binary successfully decrypted!");
 				newline(1);
-				Debug("If you require a \"clean\" dump,");
-				Debug("do NOT hold 'Y' during startup.");
+				Debug("ARM9 Loader EP %08X, OEP %08X", ARM9_EP, ARM9_OEP_bkp);
 			} else {
 				Debug("Decryption of the N3DS binary failed!");
 				newline(1);
 				Debug("Your platform has not yet been added");
 				Debug("support for ARM9 binary decryption.");
+				newline(1);
+				if (is_valid_firm()) {
+					Debug("Your FIRM header checksum is %08X",
+						get_checksum((void *)firm, sizeof(firm_header_t)));
+					Debug("Please get in touch with the author");
+				}
 			}
 		} else { // old 3ds
 			newline(1);
@@ -54,7 +57,7 @@ int main () {
 	//loader_info_t li;
 
 	//result = init_loader_info(&li);
-	//li.address = entry_point_arm9;
+	//li.address = ARM9_EP;
 
 	check_trigger();
 
