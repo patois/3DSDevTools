@@ -110,7 +110,11 @@ int menu_cb_dump_fcram (int idx, void *notused) {
 	u32 result = 0;
 
 	if (ask_dump("FCRAM")) {
-			result = dump_mem(PATH_FCRAM, (void *)ARM9_FCRAM, ARM9_FCRAM_SIZE, &dump_cb_print_progress);
+			if(GetUnitPlatform() == PLATFORM_N3DS){
+					result = dump_mem(PATH_FCRAM, (void *)ARM9_FCRAM, ARM9_FCRAM_SIZE_N3DS, &dump_cb_print_progress);
+			}else{
+					result = dump_mem(PATH_FCRAM, (void *)ARM9_FCRAM, ARM9_FCRAM_SIZE, &dump_cb_print_progress);
+			}
 			newline(2);
 			Debug("Done: %s!", result ? "success":"failure");
 			result = 1;
